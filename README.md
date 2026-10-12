@@ -4,6 +4,8 @@ A custom online store for **Lower Echelon Worldwide**, an NYC streetwear brand, 
 
 **Live preview:** https://lower-echelon-worldwide.lowerechelon.workers.dev
 
+![Lower Echelon storefront homepage](docs/screenshot.jpg)
+
 ## What it does
 - Storefront with a motion-heavy design: drop gallery, product pages with size and color variants, and a slide-out cart
 - Owner-only admin panel at `/admin` to edit products, prices, per-size stock, photos, and visibility, and to view orders
