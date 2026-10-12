@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+/* ---------- Tokens: "The Building" ---------- */
+:root {
+  --ink: #0d0d0c;
+  --concrete-900: #171716;
+  --concrete-700: #2a2a28;
+  --concrete-500: #6d6b66;
+  --concrete-300: #b4b1a9;
+  --paper: #ebe8e0;
+  --accent: #5fc98a; /* ivy/bodega green, pulled from the hoodie, sweatsuit and tracksuit photos */
+  --background: var(--ink);
+  --foreground: var(--paper);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-concrete-900: var(--concrete-900);
+  --color-concrete-700: var(--concrete-700);
+  --color-concrete-500: var(--concrete-500);
+  --color-concrete-300: var(--concrete-300);
+  --color-paper: var(--paper);
+  --color-accent: var(--accent);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-anton);
+  --font-mono: var(--font-space-mono);
+}
+
+html {
+  background: var(--background);
+  color-scheme: dark;
+  /* Safety net: no component (current or future — GSAP pins, wide flex tracks, marquees)
+     should ever be able to make the whole page horizontally scrollable. */
+  overflow-x: hidden;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+/* ---------- Type helpers ---------- */
+.display {
+  font-family: var(--font-display), Impact, sans-serif;
+  text-transform: uppercase;
+  line-height: 0.88;
+  letter-spacing: -0.01em;
+}
+.label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+}
+
+/* ---------- Film grain overlay (cheap SVG noise, no image asset) ---------- */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.09;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain 0.9s steps(6) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); }
+  80% { transform: translate(3%, 3%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ---------- Scroll-driven reveal (pure CSS, where supported) ---------- */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 60%;
+  }
+}
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(48px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Marquee ---------- */
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+/* ---------- View transitions (React <ViewTransition>, see next docs guide) ---------- */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(.morph) {
+  animation-duration: 600ms;
+  animation-timing-function: var(--ease-out-expo);
+}
+::view-transition-image-pair(.morph) {
+  animation-name: via-blur;
+}
+@keyframes via-blur {
+  30% { filter: blur(3px); }
+}
+
+::view-transition-old(.nav-forward) {
+  --slide-offset: -60px;
+  animation:
+    150ms ease-in both fade reverse,
+    400ms ease-in-out both slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --slide-offset: 60px;
+  animation:
+    210ms ease-out 150ms both fade,
+    400ms ease-in-out both slide;
+}
+::view-transition-old(.nav-back) {
+  --slide-offset: 60px;
+  animation:
+    150ms ease-in both fade reverse,
+    400ms ease-in-out both slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --slide-offset: -60px;
+  animation:
+    210ms ease-out 150ms both fade,
+    400ms ease-in-out both slide;
+}
+@keyframes fade {
+  from { filter: blur(3px); opacity: 0; }
+  to { filter: blur(0); opacity: 1; }
+}
+@keyframes slide {
+  from { translate: var(--slide-offset); }
+  to { translate: 0; }
+}
+
+/* Header stays put while content slides */
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-header) {
+  display: none;
+}
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+  .grain::after,
+  .marquee-track {
+    animation: none;
+  }
+  .reveal {
+    animation: none;
+  }
+}
+
+/* ---------- Cart drawer: native popover, animated with @starting-style ---------- */
+.cart-drawer {
+  margin: 0;
+  inset: 0 0 0 auto;
+  height: 100dvh;
+  width: min(440px, 100vw);
+  max-height: none;
+  border: 0;
+  background: var(--concrete-900);
+  color: var(--paper);
+  transform: translateX(100%);
+  transition:
+    transform 0.55s var(--ease-out-expo),
+    overlay 0.55s allow-discrete,
+    display 0.55s allow-discrete;
+}
+.cart-drawer:popover-open {
+  transform: translateX(0);
+}
+@starting-style {
+  .cart-drawer:popover-open {
+    transform: translateX(100%);
+  }
+}
+.cart-drawer::backdrop {
+  background: rgb(0 0 0 / 0);
+  backdrop-filter: blur(0);
+  transition:
+    background 0.55s,
+    backdrop-filter 0.55s,
+    overlay 0.55s allow-discrete,
+    display 0.55s allow-discrete;
+}
+.cart-drawer:popover-open::backdrop {
+  background: rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(4px);
+}
+@starting-style {
+  .cart-drawer:popover-open::backdrop {
+    background: rgb(0 0 0 / 0);
+    backdrop-filter: blur(0);
+  }
+}

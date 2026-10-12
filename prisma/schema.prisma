@@ -1,0 +1,148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+//
+// Prisma is schema/migrations tooling ONLY here — `prisma migrate` and `prisma
+// generate` run on the dev machine, never inside the deployed app. We do not
+// generate or use @prisma/client at runtime: its query engine (native binary
+// or WASM) cannot run inside a Cloudflare Workers isolate — native binaries
+// can't execute there at all, and the WASM path hits a confirmed open Prisma
+// bug (github.com/prisma/orm/issues/28657) plus an OpenNext bundling gap.
+// Runtime queries use Kysely + kysely-neon instead (see src/lib/db.ts), with
+// types generated straight from this schema by the `kysely` generator below.
+
+generator kysely {
+  provider = "prisma-kysely"
+  output       = "../src/generated/kysely"
+  fileName     = "types.ts"
+  enumFileName = "enums.ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Catalog -----------------------------------------------------------
+// Category is a free-form string (not an enum) so the owner can add a new
+// category from the admin without a code deploy.
+
+model Product {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String    @default("")
+  details     String[]  @default([]) // bullet points, e.g. "Heavy Weight", "True to size"
+  category    String
+  price       Int // cents (avoid float rounding on money)
+  active      Boolean   @default(true) // owner can hide a product without deleting it
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) // no Prisma Client at runtime — app code must set this on every update
+
+  images   ProductImage[]
+  variants ProductVariant[]
+  orderItems OrderItem[]
+
+  @@index([category])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int     @default(0) // display order; first image is the card/hero photo
+
+  @@index([productId])
+}
+
+// One row per size/color combination actually sold, so stock and "sold out"
+// are tracked precisely instead of guessed at the product level.
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  color     String  @default("") // "" when the product has no color choice
+  stock     Int     @default(0)
+  sku       String?
+
+  orderItems OrderItem[]
+
+  @@unique([productId, size, color])
+}
+
+// --- Orders --------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING // Stripe Checkout session created, not yet paid
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id                    String      @id @default(cuid())
+  number                Int         @default(autoincrement()) // human-friendly, e.g. "Order #42"
+  status                OrderStatus @default(PENDING)
+  email                 String
+  name                  String      @default("")
+  shippingAddress       Json?
+  subtotal              Int // cents
+  shipping              Int         @default(0)
+  tax                   Int         @default(0)
+  total                 Int
+  stripeCheckoutSessionId String?   @unique
+  stripePaymentIntentId  String?    @unique
+  trackingNumber        String?
+  trackingCarrier       String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @default(now()) // no Prisma Client at runtime — app code must set this on every update
+
+  items OrderItem[]
+
+  @@index([status])
+  @@index([email])
+}
+
+// Snapshots product name/price/size/color at time of purchase — never re-read
+// live catalog data for a past order, so price changes never rewrite history.
+model OrderItem {
+  id          String          @id @default(cuid())
+  orderId     String
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  productName String
+  size        String
+  color       String @default("")
+  unitPrice   Int // cents, snapshot at purchase
+  quantity    Int
+
+  @@index([orderId])
+}
+
+// --- Admin -----------------------------------------------------------------
+// Owner-only login. Sessions are DB-backed (not JWT) so a session can be
+// revoked instantly by deleting the row — important on a shared/lost device.
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  sessions AdminSession[]
+}
+
+model AdminSession {
+  id          String    @id @default(cuid()) // the session token itself
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId])
+}
