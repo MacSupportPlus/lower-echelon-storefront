@@ -1,8 +1,8 @@
 # Lower Echelon Worldwide storefront
 
-A custom online store for **Lower Echelon Worldwide**, an NYC streetwear brand, built to replace an aging WooCommerce site. Built by [Jason McElvain](https://github.com/MacSupportPlus).
+A custom online store for **Lower Echelon Worldwide**, an NYC streetwear brand, that replaced an aging WooCommerce site. Built by [Jason McElvain](https://github.com/MacSupportPlus).
 
-**Live preview:** https://lower-echelon-worldwide.lowerechelon.workers.dev
+**Live store:** https://www.lowerechelonworldwide.com
 
 ![Lower Echelon storefront homepage](docs/screenshot.jpg)
 
@@ -32,4 +32,4 @@ npm run preview      # build and run in the real Cloudflare workerd runtime
 ```
 
 ## Status
-In active development. Stripe Checkout and the domain cutover are next. This public copy is a snapshot for portfolio purposes; client planning notes live in a private repo.
+Live on the brand's own domain, served from Cloudflare. This public copy is a snapshot for portfolio purposes; client planning notes live in a private repo.
